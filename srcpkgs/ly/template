@@ -1,0 +1,21 @@
+# Template file for 'ly'
+pkgname=ly
+version=1.4.0
+revision=1
+build_style=zig-build
+configure_args="-Dinit_system=runit -Ddest_directory=${DESTDIR} -Dconfig_directory=/etc --sysroot "${XBPS_CROSS_BASE:-/}""
+makedepends="pam-devel libxcb-devel"
+short_desc="A lightweight TUI display manager"
+license="WTFPL-2.0"
+homepage="https://codeberg.org/fairyglade/ly"
+distfiles="https://codeberg.org/fairyglade/ly/archive/v${version}.tar.gz"
+checksum=3ee8f2f8c14a00437f7c3ec044bf5c95a6be45036c7ed5aa43c6f9eb91bf925a
+nopie_files=/usr/bin/ly
+
+pre_build() {
+    if [ "$CROSS_BUILD" ]; then
+        configure_args+=" --search-prefix /"
+    else
+        configure_args+=" --search-prefix /usr"
+    fi
+}
