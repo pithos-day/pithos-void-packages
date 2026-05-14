@@ -1,0 +1,12 @@
+# Template file for 'shaderbg'
+pkgname=shaderbg
+version=1.0.0
+revision=1
+build_style=meson
+hostmakedepends="pkg-config"
+makedepends="MesaLib-devel wayland-devel"
+short_desc="Render shaders as a wall paper."
+license="GPL-3.0-or-later"
+homepage="https://codeberg.org/pithos/shaderbg"
+distfiles="https://codeberg.org/pithos/shaderbg/archive/v${version}.tar.gz"
+checksum=835027f9b5938b3dd26b6c30c60806d41c1105967fb5b5e580f314abcef75fcd
