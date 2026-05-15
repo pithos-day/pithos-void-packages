@@ -1,0 +1,117 @@
+on:
+  push:
+    branches: [main]
+    paths: ['srcpkgs/**']
+
+jobs:
+  build:
+    runs-on: codeberg-small-lazy
+    container:
+      image: ghcr.io/void-linux/void-linux:latest-full-x86_64
+      options: --privileged
+
+    steps:
+      - name: Setup dependencies
+        run: |
+          xbps-install -Syu xbps
+          xbps-install -Syu nodejs bash sudo git xz tar
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: pithos-void-packages
+
+      - name: Checkout Codeberg Pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: pages
+          path: repository
+          fetch-depth: 1
+
+      - name: Clone void-packages
+        run: |
+          git clone --depth=1 https://github.com/void-linux/void-packages.git
+
+      - name: Create builder user
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+
+      - name: Bootstrap xbps-src
+        run: |
+          sudo -u builder bash -lc '
+            cd void-packages
+            ./xbps-src binary-bootstrap
+            echo "repository=https://void.pithos.day" >> ./etc/xbps.d/repos-remote.conf
+          '
+
+      - name: Copy srcpkgs
+        run: |
+          cd pithos-void-packages
+          bash copy.sh "$GITHUB_WORKSPACE/void-packages"
+
+      - name: Detect and build new packages
+        id: build
+        run: |
+          TO_BUILD=()
+
+          for template in pithos-void-packages/srcpkgs/*/template; do
+            pkgname=$(basename "$(dirname "$template")")
+            version=$(grep '^version=' "$template" | cut -d= -f2)
+            revision=$(grep '^revision=' "$template" | cut -d= -f2)
+
+            if ! compgen -G "repository/${pkgname}-${version}_${revision}*.xbps" \
+                 2>/dev/null | grep -q .; then
+              echo "→ Build needed: $pkgname-${version}_${revision}"
+              TO_BUILD+=("$pkgname")
+            else
+              echo "✓ Already built: $pkgname-${version}_${revision}"
+            fi
+          done
+
+          if [[ ${#TO_BUILD[@]} -eq 0 ]]; then
+            echo "Nothing to build."
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "${{ vars.ENCODED_REPOSITORY_SIGN_PUBLIC_KEY }}" | base64 -d  > ./void-packages/masterdir-x86_64/var/db/xbps/keys/${{ vars.FINGERPRINT }}.plist
+
+          for pkg in "${TO_BUILD[@]}"; do
+            sudo -u builder bash -lc '
+              cd void-packages
+              ./xbps-src pkg '$pkg'
+            '
+          done
+
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update repository
+        if: steps.build.outputs.built == 'true'
+        run: |
+          find void-packages/hostdir/binpkgs -maxdepth 1 -name '*.xbps' -exec cp {} repository/ \;
+          cd repository
+          xbps-rindex -a ./*.xbps
+
+      - name: Sign repository
+        if: steps.build.outputs.built == 'true'
+        run: |
+          cd repository
+          printf '%s\n' "${{ secrets.REPOSITORY_SIGN_KEY }}" > private.pem
+          chmod 600 private.pem
+          xbps-rindex --sign-pkg --signedby "${{ vars.REPOSITORY_SIGN_NAME }}" --privkey private.pem ./*.xbps
+          rm -f private.pem
+
+      - name: Deploy to pages
+        if: steps.build.outputs.built == 'true'
+        run: |
+          cd repository
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+          git config --global --add safe.directory ${{ github.workspace }}/repository
+
+          git remote set-url origin "https://x-token:${{ secrets.DEPLOY_TOKEN }}@codeberg.org/pithos/pithos-void-packages.git"
+
+          git add -A
+          git commit -m "Deploy [skip ci]" || echo "no changes"
+          git push origin HEAD:pages
