@@ -1,0 +1,11 @@
+# Template file for 'kakeibo-cli'
+pkgname=kakeibo-cli
+version=1.0.0
+revision=1
+build_style=go
+go_import_path="codeberg.org/pithos/kakeibo-cli"
+short_desc="A simple household budget CLI tool."
+license="MIT"
+homepage="https://codeberg.org/pithos/kakeibo-cli"
+distfiles="https://codeberg.org/pithos/kakeibo-cli/archive/v${version}.tar.gz"
+checksum=898b52a20048e49f027d18bfef6507681fa7e4e28886129fc2fdfd0b3a5311c5
