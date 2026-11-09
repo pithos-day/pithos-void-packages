@@ -2,10 +2,23 @@ on:
   push:
     branches: [main]
     paths: ['srcpkgs/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
-    runs-on: codeberg-small-lazy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     container:
       image: ghcr.io/void-linux/void-linux:latest-full-x86_64
       options: --privileged
@@ -17,12 +30,12 @@ jobs:
           xbps-install -Syu nodejs bash sudo git xz tar
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: pithos-void-packages
 
-      - name: Checkout Codeberg Pages branch
-        uses: actions/checkout@v4
+      - name: Checkout pages branch
+        uses: actions/checkout@v6
         with:
           ref: pages
           path: repository
@@ -102,7 +115,7 @@ jobs:
           xbps-rindex --sign-pkg --signedby "${{ vars.REPOSITORY_SIGN_NAME }}" --privkey private.pem ./*.xbps
           rm -f private.pem
 
-      - name: Deploy to pages
+      - name: Push to pages branch
         if: steps.build.outputs.built == 'true'
         run: |
           cd repository
@@ -110,8 +123,17 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global --add safe.directory ${{ github.workspace }}/repository
 
-          git remote set-url origin "https://x-token:${{ secrets.DEPLOY_TOKEN }}@codeberg.org/pithos/pithos-void-packages.git"
-
           git add -A
           git commit -m "Deploy [skip ci]" || echo "no changes"
           git push origin HEAD:pages
+
+      - name: Upload Pages artifact
+        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: repository
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/deploy-pages@v5
