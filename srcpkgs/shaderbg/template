@@ -2,11 +2,12 @@
 pkgname=shaderbg
 version=1.0.0
 revision=1
+_commit=08637deafe4aafb36885d74088937d67187f7e9f
 build_style=meson
 hostmakedepends="pkg-config"
 makedepends="MesaLib-devel wayland-devel"
 short_desc="Render shaders as a wall paper."
 license="GPL-3.0-or-later"
-homepage="https://codeberg.org/pithos/shaderbg"
-distfiles="https://codeberg.org/pithos/shaderbg/archive/v${version}.tar.gz"
-checksum=835027f9b5938b3dd26b6c30c60806d41c1105967fb5b5e580f314abcef75fcd
+homepage="https://github.com/pithos-day/shaderbg"
+distfiles="https://github.com/pithos-day/shaderbg/archive/${_commit}.tar.gz"
+checksum=363e1c87998617518861f5a43f1269320383683b3d0a130eb7844a24fb929d9d
