@@ -22,6 +22,8 @@ jobs:
     container:
       image: ghcr.io/void-linux/void-linux:latest-full-x86_64
       options: --privileged
+      volumes:
+        - /dev:/dev
     defaults:
       run:
         shell: bash
@@ -51,13 +53,14 @@ jobs:
 
       - name: Create builder user
         run: |
-          useradd -m builder
+          useradd -m -G xbuilder builder
           chown -R builder:builder .
 
       - name: Bootstrap xbps-src
         run: |
           sudo -u builder bash -lc '
             cd void-packages
+            echo XBPS_CHROOT_CMD=uchroot >> etc/conf
             ./xbps-src binary-bootstrap
             echo "repository=https://void.pithos.day" >> ./etc/xbps.d/repos-remote.conf
           '
