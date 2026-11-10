@@ -77,6 +77,13 @@ jobs:
 
           for template in pithos-void-packages/srcpkgs/*/template; do
             pkgname=$(basename "$(dirname "$template")")
+
+            # 再配布できないもの (restricted=yes) と "# ci-skip:" が付いたものは配布しない
+            if grep -qE '^(restricted=yes|# ci-skip:)' "$template"; then
+              echo "- Skipped: $pkgname"
+              continue
+            fi
+
             version=$(grep '^version=' "$template" | cut -d= -f2)
             revision=$(grep '^revision=' "$template" | cut -d= -f2)
 
