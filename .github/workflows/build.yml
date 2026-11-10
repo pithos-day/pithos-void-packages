@@ -146,11 +146,11 @@ jobs:
             fi
           done
 
-          if compgen -G './*.xbps' > /dev/null; then
-            xbps-rindex -a ./*.xbps
-          fi
-          # ファイルがなくなったパッケージをインデックスから外し、古いバージョンのパッケージを消す
-          xbps-rindex -c "$PWD"
+          # インデックスは毎回作り直す。既存のインデックスに追加すると、共有ライブラリの
+          # 構成が変わった更新が staged 扱いになり、新しいバージョンが公開されないことがある
+          rm -f ./*-repodata ./*-stagedata
+          xbps-rindex -a ./*.xbps
+          # 古いバージョンのパッケージを消す
           xbps-rindex -r "$PWD"
           for sig in ./*.sig2; do
             [[ -e "${sig%.sig2}" ]] || rm -f "$sig"
