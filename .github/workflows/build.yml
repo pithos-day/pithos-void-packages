@@ -114,16 +114,17 @@ jobs:
           xbps-rindex -a ./*.xbps
 
       - name: Sign repository
-        if: steps.build.outputs.built == 'true'
+        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd repository
           printf '%s\n' "${{ secrets.REPOSITORY_SIGN_KEY }}" > private.pem
           chmod 600 private.pem
+          xbps-rindex --sign --signedby "${{ vars.REPOSITORY_SIGN_NAME }}" --privkey private.pem "$PWD"
           xbps-rindex --sign-pkg --signedby "${{ vars.REPOSITORY_SIGN_NAME }}" --privkey private.pem ./*.xbps
           rm -f private.pem
 
       - name: Push to pages branch
-        if: steps.build.outputs.built == 'true'
+        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd repository
           git config --global user.name "CI"
