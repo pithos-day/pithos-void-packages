@@ -128,7 +128,7 @@ jobs:
           cd repository
           git config --global user.name "CI"
           git config --global user.email "ci@example.com"
-          git config --global --add safe.directory ${{ github.workspace }}/repository
+          git config --global --add safe.directory "$PWD"
 
           git add -A
           git commit -m "Deploy [skip ci]" || echo "no changes"
