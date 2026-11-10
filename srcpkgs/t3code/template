@@ -1,35 +1,30 @@
 # Template file for 't3code'
 pkgname=t3code
 version=0.1.8
-revision=1
+revision=2
 archs="x86_64"
-depends="libnotify libsecret xdg-utils"
-short_desc="Desktop GUI for coding agents"
+short_desc="GUI for coding agents, served from the terminal to the browser"
 license="MIT"
 homepage="https://t3.codes"
-distfiles="https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-${version}-amd64.deb"
-checksum=22dac1167d4e4e68a3f3c3461b53c7d472ef70f2020732c70006eb2970830e5e
+distfiles="https://github.com/pingdotgg/t3code/releases/download/v${version}/t3-${version}-linux-x64.tar.gz
+ https://raw.githubusercontent.com/pingdotgg/t3code/v${version}/LICENSE"
+checksum="b9c49dc00c23fbbc5961bdaff2d88e556d96c8dbd638c4501e2937c70650a9e5
+ 935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43"
+skip_extraction="LICENSE"
 nostrip=yes
 nopie=yes
-# 同梱されている musl / aarch64 向けの prebuilt は依存解決の対象から外す
-_modules="/usr/lib/t3code/resources/app.asar.unpacked/node_modules"
+# 同梱されている musl 向けの prebuilt は依存解決の対象から外す
+_modules="/usr/lib/t3code/node_modules"
 skiprdeps="${_modules}/@yuuang/ffi-rs-linux-x64-musl/ffi-rs.linux-x64-musl.node
- ${_modules}/node-pty/prebuilds/linux-arm64/pty.node
- ${_modules}/@koromix/koffi-linux-x64/musl_x64/koffi.node
- ${_modules}/@ff-labs/fff-bin-linux-x64-musl/libfff_c.so"
+ ${_modules}/@ff-labs/fff-bin-linux-x64-musl/libfff_c.so
+ ${_modules}/@koromix/koffi-linux-x64/musl_x64/koffi.node"
 
 do_install() {
 	vmkdir usr/lib/t3code
-	cp -a "opt/T3 Code (Beta)/." ${DESTDIR}/usr/lib/t3code/
+	vcopy "*" usr/lib/t3code
 
 	vmkdir usr/bin
-	ln -s ../lib/t3code/t3code ${DESTDIR}/usr/bin/t3code
+	ln -s ../lib/t3code/t3 ${DESTDIR}/usr/bin/t3
 
-	vmkdir usr/share
-	vcopy usr/share/icons usr/share
-	vcopy usr/share/metainfo usr/share
-	sed -i 's|^Exec=.*t3code"\{0,1\}|Exec=t3code|' usr/share/applications/t3code.desktop
-	vinstall usr/share/applications/t3code.desktop 644 usr/share/applications
-
-	vlicense usr/share/doc/t3code/copyright
+	vlicense ${XBPS_SRCDISTDIR}/${pkgname}-${version}/LICENSE
 }
