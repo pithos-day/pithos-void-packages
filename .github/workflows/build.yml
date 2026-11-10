@@ -105,11 +105,27 @@ jobs:
 
           echo "${{ vars.ENCODED_REPOSITORY_SIGN_PUBLIC_KEY }}" | base64 -d  > ./void-packages/masterdir-x86_64/var/db/xbps/keys/${{ vars.FINGERPRINT }}.plist
 
+          # パッケージごとのビルド時間を、ランの Summary に表として出す
+          {
+            echo "| パッケージ | 結果 | ビルド時間 |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
           for pkg in "${TO_BUILD[@]}"; do
+            echo "::group::Build $pkg"
+            start=$SECONDS
+            status=0
             sudo -u builder bash -lc '
               cd void-packages
               ./xbps-src pkg '$pkg'
-            '
+            ' || status=$?
+            elapsed=$((SECONDS - start))
+            echo "::endgroup::"
+
+            result=$([[ $status -eq 0 ]] && echo "成功" || echo "失敗")
+            printf '| `%s` | %s | %dm %02ds |\n' "$pkg" "$result" $((elapsed / 60)) $((elapsed % 60)) \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+            [[ $status -eq 0 ]] || exit "$status"
           done
 
           echo "built=true" >> "$GITHUB_OUTPUT"
