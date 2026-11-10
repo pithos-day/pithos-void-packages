@@ -5,20 +5,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
-  group: pages
+  group: deploy
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     container:
       image: ghcr.io/void-linux/void-linux:latest-full-x86_64
       options: --privileged
@@ -33,19 +28,25 @@ jobs:
         shell: sh
         run: |
           xbps-install -Syu xbps
-          xbps-install -Syu nodejs bash sudo git xz tar
+          xbps-install -Syu nodejs bash sudo git xz tar rclone
 
       - name: Checkout source
         uses: actions/checkout@v6
         with:
           path: pithos-void-packages
 
-      - name: Checkout pages branch
-        uses: actions/checkout@v6
-        with:
-          ref: pages
-          path: repository
-          fetch-depth: 1
+      - name: Download repository from R2
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          mkdir repository
+          rclone copy "r2:$R2_BUCKET" repository
 
       - name: Clone void-packages
         run: |
@@ -78,8 +79,8 @@ jobs:
           for template in pithos-void-packages/srcpkgs/*/template; do
             pkgname=$(basename "$(dirname "$template")")
 
-            # 再配布できないもの (restricted=yes) と "# ci-skip:" が付いたものは配布しない
-            if grep -qE '^(restricted=yes|# ci-skip:)' "$template"; then
+            # 再配布できないもの (restricted=yes) は配布しない
+            if grep -q '^restricted=yes' "$template"; then
               echo "- Skipped: $pkgname"
               continue
             fi
@@ -120,6 +121,12 @@ jobs:
           cd repository
           xbps-rindex -a ./*.xbps
 
+          # 古いバージョンのパッケージと、対応するパッケージがなくなった署名を消す
+          xbps-rindex -r "$PWD"
+          for sig in ./*.sig2; do
+            [[ -e "${sig%.sig2}" ]] || rm -f "$sig"
+          done
+
       - name: Sign repository
         if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         run: |
@@ -130,25 +137,15 @@ jobs:
           xbps-rindex --sign-pkg --signedby "${{ vars.REPOSITORY_SIGN_NAME }}" --privkey private.pem ./*.xbps
           rm -f private.pem
 
-      - name: Push to pages branch
+      - name: Upload repository to R2
         if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
-          cd repository
-          git config --global user.name "CI"
-          git config --global user.email "ci@example.com"
-          git config --global --add safe.directory "$PWD"
-
-          git add -A
-          git commit -m "Deploy [skip ci]" || echo "no changes"
-          git push origin HEAD:pages
-
-      - name: Upload Pages artifact
-        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: repository
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
-        uses: actions/deploy-pages@v5
+          rclone sync repository "r2:$R2_BUCKET"

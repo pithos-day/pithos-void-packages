@@ -1,5 +1,4 @@
 # Template file for 't3code'
-# ci-skip: パッケージが 100MB を超え、GitHub の pages ブランチに push できない
 pkgname=t3code
 version=0.1.8
 revision=1

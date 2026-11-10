@@ -16,11 +16,10 @@ sudo xbps-install -S
 
 ## リポジトリで配布していないパッケージ
 
-次のパッケージは template だけを置いています。再配布できない、または GitHub のファイルサイズ上限 (100MB) を超えるためです。
+次のパッケージは再配布できないため、template だけを置いています。
 
 - `claude-code`
 - `intellij-idea`
-- `t3code`
 
 使う場合は、手元の [void-packages](https://github.com/void-linux/void-packages) でビルドします。
 
@@ -31,5 +30,3 @@ echo XBPS_ALLOW_RESTRICTED=yes >> etc/conf
 ./xbps-src pkg claude-code
 sudo xbps-install --repository=hostdir/binpkgs/nonfree claude-code
 ```
-
-`t3code` は `hostdir/binpkgs`、`claude-code` と `intellij-idea` は `hostdir/binpkgs/nonfree` に出力されます。
