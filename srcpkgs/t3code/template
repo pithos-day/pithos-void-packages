@@ -1,0 +1,36 @@
+# Template file for 't3code'
+# ci-skip: パッケージが 100MB を超え、GitHub の pages ブランチに push できない
+pkgname=t3code
+version=0.1.8
+revision=1
+archs="x86_64"
+depends="libnotify libsecret xdg-utils"
+short_desc="Desktop GUI for coding agents"
+license="MIT"
+homepage="https://t3.codes"
+distfiles="https://github.com/pingdotgg/t3code/releases/download/v${version}/T3-Code-${version}-amd64.deb"
+checksum=22dac1167d4e4e68a3f3c3461b53c7d472ef70f2020732c70006eb2970830e5e
+nostrip=yes
+nopie=yes
+# 同梱されている musl / aarch64 向けの prebuilt は依存解決の対象から外す
+_modules="/usr/lib/t3code/resources/app.asar.unpacked/node_modules"
+skiprdeps="${_modules}/@yuuang/ffi-rs-linux-x64-musl/ffi-rs.linux-x64-musl.node
+ ${_modules}/node-pty/prebuilds/linux-arm64/pty.node
+ ${_modules}/@koromix/koffi-linux-x64/musl_x64/koffi.node
+ ${_modules}/@ff-labs/fff-bin-linux-x64-musl/libfff_c.so"
+
+do_install() {
+	vmkdir usr/lib/t3code
+	cp -a "opt/T3 Code (Beta)/." ${DESTDIR}/usr/lib/t3code/
+
+	vmkdir usr/bin
+	ln -s ../lib/t3code/t3code ${DESTDIR}/usr/bin/t3code
+
+	vmkdir usr/share
+	vcopy usr/share/icons usr/share
+	vcopy usr/share/metainfo usr/share
+	sed -i 's|^Exec=.*t3code"\{0,1\}|Exec=t3code|' usr/share/applications/t3code.desktop
+	vinstall usr/share/applications/t3code.desktop 644 usr/share/applications
+
+	vlicense usr/share/doc/t3code/copyright
+}

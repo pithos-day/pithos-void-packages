@@ -1,0 +1,31 @@
+# Template file for 'claude-code'
+pkgname=claude-code
+version=2.1.321
+revision=1
+archs="x86_64"
+short_desc="Agentic coding tool by Anthropic that lives in your terminal"
+license="custom:Proprietary"
+homepage="https://claude.com/product/claude-code"
+distfiles="https://registry.npmjs.org/@anthropic-ai/claude-code-linux-x64/-/claude-code-linux-x64-${version}.tgz"
+checksum=249f294c2f6bfc1e6503f0780b610e880f7e9d7ae15ab34dd4ebdf23adf7664a
+repository=nonfree
+# 再配布不可のため CI ではビルドせず、ローカルでビルドする
+restricted=yes
+# bun でコンパイルされた実行ファイルは strip すると壊れる
+nostrip=yes
+nopie=yes
+
+do_install() {
+	vinstall claude 755 usr/lib/claude-code
+
+	# 更新は xbps で行うので、組み込みの自動アップデートは無効にする
+	vmkdir usr/bin
+	cat > ${DESTDIR}/usr/bin/claude <<-'_EOF'
+		#!/bin/sh
+		export DISABLE_AUTOUPDATER=1
+		exec /usr/lib/claude-code/claude "$@"
+	_EOF
+	chmod 755 ${DESTDIR}/usr/bin/claude
+
+	vlicense LICENSE.md
+}

@@ -1,0 +1,50 @@
+# Template file for 'intellij-idea'
+pkgname=intellij-idea
+version=2026.3
+revision=1
+archs="x86_64"
+depends="giflib libXtst hicolor-icon-theme"
+short_desc="Java and Kotlin integrated development environment by JetBrains"
+license="custom:Commercial"
+homepage="https://www.jetbrains.com/idea/"
+distfiles="https://download.jetbrains.com/idea/idea-${version}.tar.gz"
+checksum=6a53ff71f4a06add4c97edc4efe86c83119ff82e5b5e9f1db62fc95995bd6b25
+repository=nonfree
+# 再配布不可のため CI ではビルドせず、ローカルでビルドする
+restricted=yes
+nostrip=yes
+nopie=yes
+noverifyrdeps=yes
+python_version=3
+
+do_install() {
+	vmkdir usr/lib/intellij-idea
+	for f in bin lib plugins modules jbr product-info.json build.txt; do
+		[ -e "$f" ] && vcopy "$f" usr/lib/intellij-idea
+	done
+
+	vmkdir usr/bin
+	ln -s ../lib/intellij-idea/bin/idea ${DESTDIR}/usr/bin/idea
+
+	vmkdir usr/share/pixmaps
+	ln -s ../../lib/intellij-idea/bin/idea.png ${DESTDIR}/usr/share/pixmaps/intellij-idea.png
+	vmkdir usr/share/icons/hicolor/scalable/apps
+	ln -s ../../../../../lib/intellij-idea/bin/idea.svg \
+		${DESTDIR}/usr/share/icons/hicolor/scalable/apps/intellij-idea.svg
+
+	vmkdir usr/share/applications
+	cat > ${DESTDIR}/usr/share/applications/intellij-idea.desktop <<-_EOF
+		[Desktop Entry]
+		Type=Application
+		Name=IntelliJ IDEA
+		Comment=Capable and Ergonomic IDE for JVM
+		Exec=idea %f
+		Icon=intellij-idea
+		Terminal=false
+		Categories=Development;IDE;
+		StartupWMClass=jetbrains-idea
+	_EOF
+
+	vmkdir usr/share/licenses/${pkgname}
+	vcopy "license/*" usr/share/licenses/${pkgname}
+}
