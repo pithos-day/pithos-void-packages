@@ -115,20 +115,32 @@ jobs:
           echo "built=true" >> "$GITHUB_OUTPUT"
 
       - name: Update repository
-        if: steps.build.outputs.built == 'true'
         run: |
           find void-packages/hostdir/binpkgs -maxdepth 1 -name '*.xbps' -exec cp {} repository/ \;
           cd repository
-          xbps-rindex -a ./*.xbps
 
-          # 古いバージョンのパッケージと、対応するパッケージがなくなった署名を消す
+          # template がなくなった、または配布対象から外れたパッケージを消す
+          for pkg in ./*.xbps; do
+            [[ -e "$pkg" ]] || continue
+            pkgname=$(basename "${pkg%-*}")
+            template="../pithos-void-packages/srcpkgs/$pkgname/template"
+            if [[ ! -f "$template" ]] || grep -q '^restricted=yes' "$template"; then
+              echo "- Removed: $(basename "$pkg")"
+              rm -f "$pkg"
+            fi
+          done
+
+          if compgen -G './*.xbps' > /dev/null; then
+            xbps-rindex -a ./*.xbps
+          fi
+          # ファイルがなくなったパッケージをインデックスから外し、古いバージョンのパッケージを消す
+          xbps-rindex -c "$PWD"
           xbps-rindex -r "$PWD"
           for sig in ./*.sig2; do
             [[ -e "${sig%.sig2}" ]] || rm -f "$sig"
           done
 
       - name: Sign repository
-        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd repository
           printf '%s\n' "${{ secrets.REPOSITORY_SIGN_KEY }}" > private.pem
@@ -138,7 +150,6 @@ jobs:
           rm -f private.pem
 
       - name: Upload repository to R2
-        if: steps.build.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         env:
           RCLONE_CONFIG_R2_TYPE: s3
           RCLONE_CONFIG_R2_PROVIDER: Cloudflare
