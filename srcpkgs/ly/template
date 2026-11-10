@@ -2,12 +2,13 @@
 pkgname=ly
 version=1.5.0
 revision=1
-# void-packages の zig が古いため、ziglang.org 公式のビルド済み zig でビルドする
+# void-packages の zig が古いため、ziglang.org 公式のビルド済み zig でビルドする。
+# zig 0.17 は zig-build build style の引数と互換性がないので build style は使わない。
 _zig_version=0.17.1
 archs="x86_64"
 build_wrksrc="ly"
-build_style=zig-build
-configure_args="-Dinit_system=runit -Ddest_directory=${DESTDIR} -Dconfig_directory=/etc --sysroot "${XBPS_CROSS_BASE:-/}""
+configure_args="-Dinit_system=runit -Ddest_directory=${DESTDIR} -Dconfig_directory=/etc
+ --sysroot / --search-prefix /usr"
 makedepends="pam-devel libxcb-devel"
 short_desc="A lightweight TUI display manager"
 license="WTFPL-2.0"
@@ -18,12 +19,14 @@ checksum="115a7f7fb281803ca7f9e0ddbdf76834a53f7fa6bc702d766d03772ce1976dc3
  3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a"
 nopie_files=/usr/bin/ly
 
-pre_build() {
-    export PATH="${wrksrc}/zig-x86_64-linux-${_zig_version}:${PATH}"
+do_build() {
+	export PATH="${wrksrc}/zig-x86_64-linux-${_zig_version}:${PATH}"
+	export ZIG_GLOBAL_CACHE_DIR=/host/zig
 
-    if [ "$CROSS_BUILD" ]; then
-        configure_args+=" --search-prefix /"
-    else
-        configure_args+=" --search-prefix /usr"
-    fi
+	DESTDIR="zig-out" zig build ${makejobs} --prefix /usr --release=safe --verbose \
+		-Dcpu="${XBPS_ZIG_CPU}" install ${configure_args}
+}
+
+do_install() {
+	vbin zig-out/usr/bin/ly
 }
